@@ -29,4 +29,7 @@ interface StationDao {
 
     @Query("DELETE FROM station WHERE uid = :uid")
     fun delete(uid: Int)
+
+    @Query("DELETE FROM station")
+    fun deleteAll()
 }

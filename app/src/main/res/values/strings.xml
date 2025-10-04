@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Internet Radio</string>
-    <string name="app_description">Tap on one of the stations below to start playing</string>
+    <string name="station_default_text">Tap on one of the stations below to start playing</string>
     <string name="not_playing">Not playing</string>
     <string name="playing">Playing %s</string>
     <string name="channel_name">Notifications</string>
@@ -17,4 +17,16 @@
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="save_error">Please provide valid name and url.</string>
+    <string name="pref_ssl_title">Ignore SSL Errors</string>
+    <string name="pref_ssl_desc">This will disable all certificate checks. Useful for stations with invalid certificates. Please, use with caution.</string>
+    <string name="decrease">Decrease</string>
+    <string name="increase">Increase</string>
+    <string name="pref_columns">Columns in a grid</string>
+    <string name="pref_rows">Rows in a grid</string>
+    <string name="export">Export</string>
+    <string name="import_settings">Import</string>
+    <string name="import_error">Error while importing. Please, check that the file is valid.</string>
+    <string name="export_error">Error happend while exporting to file. Try choosing different destination.</string>
+    <string name="permissions_denied">If you change your mind, please, visit notification settings of this app.</string>
+    <string name="play_error">Unable to play this radio stream. Please, try again or check your internet.</string>
 </resources>

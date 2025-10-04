@@ -6,14 +6,23 @@ import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import androidx.compose.animation.scaleOut
 import androidx.media3.common.*
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
+import dagger.hilt.android.AndroidEntryPoint
 import xyz.koleno.internetradioplayer.data.Station
+import xyz.koleno.internetradioplayer.utils.Preferences
+import xyz.koleno.internetradioplayer.utils.restoreDefaultCertificateValidation
+import xyz.koleno.internetradioplayer.utils.validateAllCertificates
+import java.util.Timer
+import java.util.TimerTask
+import javax.inject.Inject
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@AndroidEntryPoint
 class StreamingService : Service() {
 
     private val binder = StreamingServiceBinder()
@@ -27,6 +36,9 @@ class StreamingService : Service() {
     private var errorRetry = 0
     var currentlyPlaying: Station? = null
         private set
+
+    @Inject
+    lateinit var preferences: Preferences
 
     private val mediaInfoRunnable = object : Runnable {
         override fun run() {
@@ -84,6 +96,13 @@ class StreamingService : Service() {
             .setSmallIcon(R.drawable.ic_launcher_foreground)
 
         startForeground(NOTIFICATION_ID, notificationBuilder.build())
+
+        // HTTPS certificate handling
+        if (preferences.isIgnoreSecurityEnabled()) {
+            validateAllCertificates()
+        } else {
+            restoreDefaultCertificateValidation()
+        }
 
         // setup exoplayer
         exoPlayer = ExoPlayer.Builder(this).build()
@@ -169,6 +188,11 @@ class StreamingService : Service() {
 
     fun setPlayListener(listener: () -> Unit) {
         playCallback = listener
+    }
+
+    fun finish() {
+        stop()
+        stopSelf()
     }
 
     inner class StreamingServiceBinder : Binder() {

@@ -7,18 +7,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -28,19 +30,20 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,7 +52,6 @@ import xyz.koleno.internetradioplayer.R
 import xyz.koleno.internetradioplayer.data.Station
 import kotlin.math.min
 
-// TODO: next / prev buttons
 @Composable
 fun MainScreen(
     uiState: StateFlow<MainScreenContract.State>,
@@ -57,6 +59,14 @@ fun MainScreen(
     onSettingsClicked: () -> Unit
 ) {
     val state = uiState.collectAsStateWithLifecycle()
+
+    LifecycleResumeEffect(Unit) {
+        onEvent(MainScreenContract.Event.ScreenResumed)
+
+        onPauseOrDispose { // ignored
+        }
+    }
+
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         MainScreenContent(
             modifier = Modifier.padding(innerPadding),
@@ -64,6 +74,8 @@ fun MainScreen(
             stationText = state.value.stationText,
             isPlaying = state.value.isPlaying,
             stations = state.value.stations,
+            rows = state.value.rows,
+            columns = state.value.columns,
             {
                 onEvent(MainScreenContract.Event.PlayButtonClicked)
             },
@@ -79,6 +91,14 @@ fun MainScreen(
             onSettingsClicked
         )
     }
+
+    if (state.value.showNotificationsDialog) {
+        NotificationPermissionModal({
+            onEvent(MainScreenContract.Event.DismissNotifDialogClicked)
+        }) {
+            onEvent(MainScreenContract.Event.AskForNotificationPermissionsClicked)
+        }
+    }
 }
 
 @Composable
@@ -88,6 +108,8 @@ fun MainScreenContent(
     stationText: String,
     isPlaying: Boolean,
     stations: List<Station>,
+    rows: Int,
+    columns: Int,
     onPlayButtonClicked: () -> Unit,
     onPrevButtonClicked: () -> Unit,
     onNextButtonClicked: () -> Unit,
@@ -98,7 +120,7 @@ fun MainScreenContent(
 
     Column(
         modifier
-            .padding(24.dp)
+            .padding(16.dp)
             .fillMaxHeight()
     ) {
         Box {
@@ -106,7 +128,7 @@ fun MainScreenContent(
                 text = stationTitle.ifEmpty { stringResource(R.string.app_name) },
                 modifier = Modifier
                     .fillMaxWidth(1f)
-                    .padding(bottom = 16.dp, top = 4.dp, end = 52.dp, start = 52.dp)
+                    .padding(bottom = 12.dp, top = 4.dp, end = 52.dp, start = 52.dp)
                     .clickable(onClick = {
                         Toast.makeText(context, "Dušanko ❤\uFE0F loves Janulka", Toast.LENGTH_SHORT)
                             .show()
@@ -126,7 +148,7 @@ fun MainScreenContent(
                 onClick = onSettingsClicked
             ) {
                 Icon(
-                    Icons.Outlined.Settings,
+                    painterResource(R.drawable.ic_settings),
                     contentDescription = stringResource(R.string.settings),
                     modifier = Modifier.size(36.dp)
                 )
@@ -134,37 +156,46 @@ fun MainScreenContent(
         }
 
         Text(
-            text = stationText.ifEmpty { stringResource(R.string.app_description) },
+            text = stationText.ifEmpty { stringResource(R.string.station_default_text) },
             modifier = Modifier
                 .fillMaxWidth(1f)
-                .padding(bottom = 36.dp),
+                .padding(bottom = 16.dp),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.titleLarge
         )
 
         MainScreenControls(
+            Modifier
+                .wrapContentWidth()
+                .align(Alignment.CenterHorizontally)
+                .padding(bottom = 16.dp),
             isPlaying,
             onPlayButtonClicked,
             onPrevButtonClicked,
             onNextButtonClicked
         )
 
-        MainScreenPager(modifier = Modifier, stations, onStationButtonClicked)
+        MainScreenPager(
+            Modifier,
+            stations,
+            rows,
+            columns,
+            onStationButtonClicked
+        )
     }
 
 }
 
 @Composable
 fun MainScreenControls(
+    modifier: Modifier,
     isPlaying: Boolean,
     onPlayButtonClicked: () -> Unit,
     onPrevButtonClicked: () -> Unit,
     onNextButtonClicked: () -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth(1f)
-            .padding(bottom = 36.dp),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(
             space = 24.dp,
             alignment = Alignment.CenterHorizontally
@@ -174,7 +205,7 @@ fun MainScreenControls(
             onPrevButtonClicked.invoke()
         }
         MainScreenButton(
-            if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play,
+            if (isPlaying) R.drawable.ic_stop else R.drawable.ic_play,
             stringResource(if (isPlaying) R.string.pause else R.string.play)
         ) {
             onPlayButtonClicked.invoke()
@@ -199,15 +230,10 @@ fun MainScreenButton(drawable: Int, contentDescription: String, onClick: () -> U
 fun MainScreenPager(
     modifier: Modifier,
     stations: List<Station>,
+    rows: Int,
+    columns: Int,
     onStationButtonClicked: (Station) -> Unit
 ) {
-    val configuration = LocalWindowInfo.current.containerSize
-    val landscape = configuration.width > configuration.height
-
-    val columns: Int = if (landscape) configuration.width / 500 else configuration.width / 640
-    val rows: Int = if (landscape) configuration.height / 640 else configuration.height / 500
-
-
     val onePage = columns * rows
     val pageCount = Math.ceilDiv(stations.size, onePage)
 
@@ -252,7 +278,9 @@ fun MainScreenPager(
                         .padding(horizontal = 8.dp)
                         .clip(CircleShape)
                         .background(color)
-                        .size(24.dp)
+                        .heightIn(max = 36.dp)
+                        .fillMaxHeight()
+                        .aspectRatio(1f)
                         .clickable(onClick = {
                             coroutineScope.launch {
                                 pagerState.animateScrollToPage(iteration)
@@ -325,7 +353,43 @@ fun MainScreenItem(name: String, modifier: Modifier, onClick: () -> Unit) {
 
 }
 
-@Preview(device = "spec:parent=pixel_5,orientation=portrait")
+@Composable
+fun NotificationPermissionModal(
+    onDismissRequest: () -> Unit,
+    onConfirmation: () -> Unit
+) {
+    AlertDialog(
+        title = {
+            Text(text = "Notifications")
+        },
+        text = {
+            Text(text = "Do you want to show status notifications with currently playing radio information?")
+        },
+        onDismissRequest = {
+            onDismissRequest()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirmation()
+                }
+            ) {
+                Text("Yes")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismissRequest()
+                }
+            ) {
+                Text("No")
+            }
+        }
+    )
+}
+
+@Preview(device = "spec:parent=pixel_5,orientation=landscape")
 @Composable
 fun MainScreenPreview() {
     val stations = mutableListOf<Station>()
@@ -335,7 +399,7 @@ fun MainScreenPreview() {
     }
 
     val stateFlow = MutableStateFlow(
-        MainScreenContract.State("Sample Radio", "Artist - Song", false, stations)
+        MainScreenContract.State("Sample Radio", "Artist - Song", false, stations, 2, 2, false)
     )
 
     MainScreen(

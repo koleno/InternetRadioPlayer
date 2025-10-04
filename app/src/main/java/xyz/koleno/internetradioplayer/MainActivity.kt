@@ -1,14 +1,17 @@
 package xyz.koleno.internetradioplayer
 
+import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -19,12 +22,23 @@ import xyz.koleno.internetradioplayer.ui.App
 import xyz.koleno.internetradioplayer.ui.main.MainScreenContract
 import xyz.koleno.internetradioplayer.ui.main.MainScreenViewModel
 
-// TODO request notification permission
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val viewModel: MainScreenViewModel by viewModels()
     private lateinit var streamingService: StreamingService
     private lateinit var serviceIntent: Intent
+
+    val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                viewModel.setEvent(MainScreenContract.Event.PermissionsGrantedClicked)
+            } else {
+                viewModel.setEvent(MainScreenContract.Event.PermissionsDeniedClicked)
+            }
+        }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -35,8 +49,7 @@ class MainActivity : ComponentActivity() {
             }
 
             streamingService.setErrorListener { error ->
-                // TODO: send to viewmodel
-                Toast.makeText(this@MainActivity, error.orEmpty(), Toast.LENGTH_LONG).show()
+                viewModel.setEvent(MainScreenContract.Event.PlayError(error))
             }
 
             streamingService.setPlayListener {
@@ -68,6 +81,24 @@ class MainActivity : ComponentActivity() {
 
                         MainScreenContract.Effect.StopPlaying -> {
                             streamingService.stop()
+                        }
+
+                        is MainScreenContract.Effect.ShowToast -> {
+                            // TODO: play also sound if it.sound true
+                            Toast.makeText(this@MainActivity, it.message, Toast.LENGTH_SHORT).show()
+                        }
+
+                        MainScreenContract.Effect.AskForNotificationPermissions -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        }
+
+                        MainScreenContract.Effect.RestartService -> {
+                            unbindService(connection)
+                            streamingService.finish()
+                            startService(serviceIntent)
+                            bindService(serviceIntent, connection, BIND_AUTO_CREATE)
                         }
                     }
                 }

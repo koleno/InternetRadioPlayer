@@ -2,7 +2,9 @@ package xyz.koleno.internetradioplayer.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity()
 data class Station(
     @PrimaryKey(autoGenerate = true) val uid: Int,

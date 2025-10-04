@@ -22,4 +22,5 @@ class StationRepository @Inject constructor(
 
     fun delete(uid: Int) = stationDao.delete(uid)
 
+    fun deleteAll() = stationDao.deleteAll()
 }
