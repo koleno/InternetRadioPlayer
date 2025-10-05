@@ -29,4 +29,5 @@
     <string name="export_error">Error happend while exporting to file. Try choosing different destination.</string>
     <string name="permissions_denied">If you change your mind, please, visit notification settings of this app.</string>
     <string name="play_error">Unable to play this radio stream. Please, try again or check your internet.</string>
+    <string name="close">Close</string>
 </resources>

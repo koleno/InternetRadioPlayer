@@ -125,7 +125,7 @@ fun MainScreenContent(
     ) {
         Box {
             Text(
-                text = stationTitle.ifEmpty { stringResource(R.string.app_name) },
+                text = if (isPlaying) stationTitle else stringResource(R.string.app_name),
                 modifier = Modifier
                     .fillMaxWidth(1f)
                     .padding(bottom = 12.dp, top = 4.dp, end = 52.dp, start = 52.dp)
@@ -156,7 +156,7 @@ fun MainScreenContent(
         }
 
         Text(
-            text = stationText.ifEmpty { stringResource(R.string.station_default_text) },
+            text = if (isPlaying) stationText else stringResource(R.string.station_default_text),
             modifier = Modifier
                 .fillMaxWidth(1f)
                 .padding(bottom = 16.dp),

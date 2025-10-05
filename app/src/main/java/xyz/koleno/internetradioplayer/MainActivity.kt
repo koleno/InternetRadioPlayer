@@ -22,7 +22,6 @@ import xyz.koleno.internetradioplayer.ui.App
 import xyz.koleno.internetradioplayer.ui.main.MainScreenContract
 import xyz.koleno.internetradioplayer.ui.main.MainScreenViewModel
 
-
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val viewModel: MainScreenViewModel by viewModels()
@@ -54,6 +53,10 @@ class MainActivity : ComponentActivity() {
 
             streamingService.setPlayListener {
                 viewModel.setEvent(MainScreenContract.Event.PlayStarted)
+            }
+
+            streamingService.setStopListener {
+                finish()
             }
         }
 
@@ -95,10 +98,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         MainScreenContract.Effect.RestartService -> {
-                            unbindService(connection)
-                            streamingService.finish()
-                            startService(serviceIntent)
-                            bindService(serviceIntent, connection, BIND_AUTO_CREATE)
+                            streamingService.showNotification()
                         }
                     }
                 }

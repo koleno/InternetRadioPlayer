@@ -45,7 +45,7 @@ class MainScreenViewModel @Inject constructor(
 
             is MainScreenContract.Event.RadioTextReceived -> {
                 setState {
-                    currentState.copy(stationText = event.text)
+                    currentState.copy(stationText = event.text.sanitizeRadioText())
                 }
             }
 
@@ -58,7 +58,7 @@ class MainScreenViewModel @Inject constructor(
                     setEffect { MainScreenContract.Effect.ShowToast(R.string.play_error, true) }
                 }
                 setState {
-                    currentState.copy(isPlaying = isPlaying)
+                    currentState.copy(isPlaying = false)
                 }
             }
 
@@ -104,6 +104,12 @@ class MainScreenViewModel @Inject constructor(
         }
     }
 
+    private fun String.sanitizeRadioText(): String {
+        return this
+            .replace("\\s{2,}".toRegex(), " ") // no need for extra spaces in the middle of the string
+            .trim()
+    }
+
     private fun nextButtonClicked() {
         lastPlayed?.let {
             val stations = currentState.stations
@@ -139,23 +145,34 @@ class MainScreenViewModel @Inject constructor(
     }
 
     private fun playButtonClicked() {
-        var isPlaying = false
-
         if (currentState.isPlaying) {
             setEffect { MainScreenContract.Effect.StopPlaying }
+
+            setState {
+                currentState.copy(
+                    isPlaying = false,
+                    stationTitle = "",
+                    stationText = "",
+                    showNotificationsDialog = checkIfNeededToAskForPermissions()
+                )
+            }
         } else {
             lastPlayed?.let {
-                isPlaying = true
                 setEffect { MainScreenContract.Effect.StartPlaying(it) }
+
+                setState {
+                    currentState.copy(
+                        stationTitle = it.name,
+                        stationText = "",
+                        isPlaying = true,
+                        showNotificationsDialog = checkIfNeededToAskForPermissions()
+                    )
+                }
             }
+
+
         }
 
-        setState {
-            currentState.copy(
-                isPlaying = isPlaying,
-                showNotificationsDialog = checkIfNeededToAskForPermissions()
-            )
-        }
     }
 
     private fun stationButtonClicked(station: Station) {

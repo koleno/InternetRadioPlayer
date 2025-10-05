@@ -7,7 +7,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import jakarta.inject.Singleton
-import xyz.koleno.internetradioplayer.Application
 import xyz.koleno.internetradioplayer.data.AppDatabase
 import xyz.koleno.internetradioplayer.utils.Preferences
 

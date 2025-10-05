@@ -1,13 +1,20 @@
 package xyz.koleno.internetradioplayer
 
-import android.app.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Intent
 import android.os.Binder
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import androidx.compose.animation.scaleOut
-import androidx.media3.common.*
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
@@ -17,8 +24,6 @@ import xyz.koleno.internetradioplayer.data.Station
 import xyz.koleno.internetradioplayer.utils.Preferences
 import xyz.koleno.internetradioplayer.utils.restoreDefaultCertificateValidation
 import xyz.koleno.internetradioplayer.utils.validateAllCertificates
-import java.util.Timer
-import java.util.TimerTask
 import javax.inject.Inject
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -33,6 +38,7 @@ class StreamingService : Service() {
     private var callback: ((text: String) -> Unit)? = null
     private var errorCallback: ((error: String) -> Unit)? = null
     private var playCallback: (() -> Unit)? = null
+    private var stopCallback: (() -> Unit)? = null
     private var errorRetry = 0
     var currentlyPlaying: Station? = null
         private set
@@ -92,6 +98,20 @@ class StreamingService : Service() {
                     Intent(this, MainActivity::class.java),
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )
+            )
+
+            // close button
+            .addAction(
+                Notification.Action.Builder(
+                    null, getString(R.string.close), PendingIntent.getService(
+                        this, 0, Intent(
+                            this,
+                            StreamingService::class.java
+                        ).apply {
+                            putExtra(EXTRA_CLOSE_SERVICE, true)
+                        }, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                ).build()
             )
             .setSmallIcon(R.drawable.ic_launcher_foreground)
 
@@ -173,9 +193,11 @@ class StreamingService : Service() {
     }
 
     fun stop() {
-        if (exoPlayer.isPlaying) {
-            exoPlayer.stop()
-        }
+        exoPlayer.stop()
+    }
+
+    fun showNotification() {
+        notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
     }
 
     fun setListener(listener: ((text: String) -> Unit)?) {
@@ -190,9 +212,19 @@ class StreamingService : Service() {
         playCallback = listener
     }
 
-    fun finish() {
-        stop()
-        stopSelf()
+    fun setStopListener(listener: () -> Unit) {
+        stopCallback = listener
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent?.let {
+            if (it.hasExtra(EXTRA_CLOSE_SERVICE)) {
+                stopCallback?.invoke() // also notify activity if it is bound to the service
+                stopSelf()
+            }
+        }
+
+        return super.onStartCommand(intent, flags, startId)
     }
 
     inner class StreamingServiceBinder : Binder() {
@@ -200,6 +232,7 @@ class StreamingService : Service() {
     }
 
     companion object {
+        private const val EXTRA_CLOSE_SERVICE = "extraCloseService"
         private const val RETRY_MAX = 3
         private const val MEDIA_INFO_INTERVAL = 5000L
         private const val NOTIFICATION_ID = 1
