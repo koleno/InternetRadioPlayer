@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -87,7 +88,11 @@ class MainActivity : ComponentActivity() {
                         }
 
                         is MainScreenContract.Effect.ShowToast -> {
-                            // TODO: play also sound if it.sound true
+                            // play sound along the error to notify the user
+                            MediaPlayer.create(this@MainActivity, R.raw.error).apply {
+                                start()
+                                setOnCompletionListener { release() }
+                            }
                             Toast.makeText(this@MainActivity, it.message, Toast.LENGTH_SHORT).show()
                         }
 
